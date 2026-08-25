@@ -46,11 +46,12 @@ for fname in ("permissive", "moderate", "restrictive"):
         out.append(f"| {LABEL[e]} | " + " | ".join(cells) + " |")
 
 out.append("\n### Results returned (k=10 requested)\n")
-out.append("A count below 10 at a selective filter is the signature of "
-           "search-then-discard: matches are lost, not merely ranked lower.\n")
+big = sizes[-1]
+out.append(f"Mean results returned at {big:,} chunks. A count below 10 where "
+           "more than 10 chunks match the filter is the signature of "
+           "search-then-discard: matches are lost, not merely ranked lower." + chr(10) + "")
 out.append("| engine | " + " | ".join(f"{n}" for n in ("permissive","moderate","restrictive")) + " |")
 out.append("|---|" + "---:|" * 3)
-big = sizes[-1]
 for e in ORDER:
     r = get(e, big)
     if not r: continue

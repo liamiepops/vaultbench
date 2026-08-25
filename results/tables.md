@@ -74,7 +74,7 @@
 
 ### Results returned (k=10 requested)
 
-A count below 10 at a selective filter is the signature of search-then-discard: matches are lost, not merely ranked lower.
+Mean results returned at 100,000 chunks. A count below 10 where more than 10 chunks match the filter is the signature of search-then-discard: matches are lost, not merely ranked lower.
 
 | engine | permissive | moderate | restrictive |
 |---|---:|---:|---:|
