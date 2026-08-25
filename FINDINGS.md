@@ -1,38 +1,20 @@
 # Embedded vector search at personal-vault scale
 
-**Question.** At the corpus sizes a personal knowledge base actually reaches,
-does a serious vector engine beat a simple one, and where is the crossover?
+**Question.** At the corpus sizes a personal knowledge base actually reaches, does a serious vector engine beat a simple one, and where is the crossover?
 
-**Status.** All numbers below were measured on one machine in one session.
-Every engine consumed byte-identical vectors and identical chunks. Recall is
-measured against exact brute force, so the latency figures mean something.
+**Status.** Every number below was measured on one machine in one session. Each engine consumed byte-identical vectors and identical chunks. Recall is measured against exact brute force, so the latency figures can be interpreted.
 
 ---
 
 ## 1. Summary
 
-At 1,000 and 10,000 chunks the choice of engine does not matter: every engine
-answers in under 14 ms, and most in under 7 ms. Nobody will perceive the
-difference. At 100,000 chunks the engines separate by more than two orders of
-magnitude, but the separation does not favour the serious databases uniformly —
-a plain `Float32Array` scanned in JavaScript answers in 32.7 ms with exact
-results, while sqlite-vec takes 133.8 ms and Orama 89.8 ms, both also exact.
-Only Qdrant Edge (0.52 ms) and LanceDB (3.6–6.0 ms) are genuinely faster, and
-LanceDB's default index silently returns half the correct results until a
-documented option is switched on.
+At 1,000 and 10,000 chunks the choice of engine makes no difference a user could perceive. Every engine answered in under 14 ms, and most in under 7 ms.
 
-For filtered search — the case worth building this for — what matters is
-whether an engine exploits selectivity, and the plain array exploits it better
-than any indexed engine because filtering first turns a restrictive query into
-a 1% scan. At 100,000 chunks with a 1% filter it answers in 0.71 ms, beaten
-only by Qdrant Edge's 0.20 ms; sqlite-vec takes 130.66 ms for that same query,
-having gained nothing from the filter at all. Only at looser filters and the
-largest corpus does an index pull ahead: LanceDB with refinement answers the
-80% filter in 8.06 ms against brute force's 25.27 ms.
+At 100,000 chunks the spread widens to more than two orders of magnitude, but the fast end is not where the reputations would put it. A plain `Float32Array` scanned in JavaScript returns exact results in 32.7 ms. sqlite-vec takes 133.8 ms for the same query and Orama takes 89.8 ms, both also exact. Only Qdrant Edge at 0.52 ms and LanceDB at 3.6 to 6.0 ms beat the array, and LanceDB's default index returns half the correct results until a documented option is switched on.
 
-**The plugin authors who chose a plain embeddings array made a defensible
-choice for any vault up to about 100,000 chunks.** The ones who reached for
-sqlite-vec bought a slower search than the array they replaced.
+Filtered search separates the engines by whether they exploit selectivity. Brute force and Orama scan only the chunks that survive the filter, so a 1% filter costs roughly 1% of a full scan. At 100,000 chunks brute force answers a 1% filtered query in 0.71 ms, beaten only by Qdrant Edge at 0.20 ms. sqlite-vec takes 130.66 ms for that same query, which is what it costs with no filter applied. At looser filters and the largest corpus an index does pull ahead: LanceDB with refinement answers the 80% filter in 8.06 ms against brute force's 25.27 ms.
+
+**For any vault up to about 100,000 chunks, a plain embeddings array holds up.** sqlite-vec was slower than the array it would replace at every size tested.
 
 ---
 
@@ -40,9 +22,7 @@ sqlite-vec bought a slower search than the array they replaced.
 
 ### Corpus
 
-Real markdown from four public documentation repositories, pinned by commit.
-Generated text was avoided deliberately: it has unrealistic embedding
-distributions and flatters approximate indexes.
+Real markdown from four public documentation repositories, pinned by commit. Generated text was avoided deliberately, because its embedding distributions are unrealistic and flatter approximate indexes.
 
 | source | commit | files | tokens | chunks |
 |---|---|---:|---:|---:|
@@ -52,61 +32,35 @@ distributions and flatters approximate indexes.
 | [home-assistant.io](https://github.com/home-assistant/home-assistant.io) (`source`) | `ee175d3e` | 3,734 | 10,535,140 | 48,115 |
 | **total** | | **30,639** | **35,155,658** | **165,709** |
 
-MDN alone yields only ~46k chunks, which is why four sources were combined. The
-165,709 chunks were shuffled with seed 42 and the first 100,000 kept, so the
-1k and 10k corpora are strict nested prefixes of the 100k corpus and every
-measured filter selectivity holds at all three sizes.
+MDN on its own yields about 46k chunks, which is why four sources were combined. The 165,709 chunks were shuffled with seed 42 and the first 100,000 kept. The 1k and 10k corpora are therefore strict nested prefixes of the 100k corpus, and every measured filter selectivity holds at all three sizes.
 
-Front matter is parsed, MDN/Liquid macros, fenced code blocks and raw HTML are
-stripped, and files with under 400 characters of prose are dropped.
+Front matter is parsed. MDN and Liquid macros, fenced code blocks and raw HTML are stripped. Files with under 400 characters of prose are dropped.
 
 ### Chunking
 
-**256 WordPiece tokens, stride 224 (32-token overlap).** This departs from the
-conventional 512 for a specific reason: `all-MiniLM-L6-v2` declares
-`max_seq_length: 256`. A 512-token chunk would be silently truncated in half
-before embedding, and the benchmark would be measuring retrieval over text the
-model never saw. One chunker was run once; all engines consume the identical
-chunks.
+Chunks are 256 WordPiece tokens with a stride of 224, giving 32 tokens of overlap. This departs from the conventional 512 for a specific reason: `all-MiniLM-L6-v2` declares `max_seq_length: 256`. A 512-token chunk would be truncated in half before embedding, and the benchmark would then be measuring retrieval over text the model never saw. One chunker was run once, and all engines consume the identical chunks.
 
 ### Embeddings
 
-`sentence-transformers/all-MiniLM-L6-v2` — 384 dimensions, mean pooling,
-L2-normalised — run under ONNX Runtime 1.29.0 on CPU. **Computed once,
-persisted as raw float32, and loaded byte-identically into every engine**, so
-no measurement anywhere includes embedding cost. Because vectors are
-normalised, cosine similarity is a plain dot product.
+The model is `sentence-transformers/all-MiniLM-L6-v2`: 384 dimensions, mean pooling, L2-normalised, run under ONNX Runtime 1.29.0 on CPU.
 
-The pipeline was validated against the published reference similarities for
-this model: `"That is a happy person"` scores 0.9429 against `"That is a very
-happy person"`, 0.6946 against `"That is a happy dog"`, and 0.2569 against
-`"Today is a sunny day"`.
+Vectors were computed once, persisted as raw float32, and loaded byte-identically into every engine, so no measurement anywhere includes embedding cost. Because the vectors are normalised, cosine similarity reduces to a dot product.
+
+The pipeline was validated against the published reference similarities for this model. `"That is a happy person"` scored 0.9429 against `"That is a very happy person"`, 0.6946 against `"That is a happy dog"`, and 0.2569 against `"Today is a sunny day"`.
 
 ### Queries
 
-200 distinct queries, being document titles sampled deterministically (seed 42)
-from across all four corpora — short topical noun phrases, which is what people
-type into a vault search box. Embedded once at build time with the same model
-and cached, so query embedding never enters a measurement.
+200 distinct queries, taken as document titles sampled deterministically with seed 42 from across all four corpora. These are short topical noun phrases, which is what people type into a vault search box. They were embedded once at build time with the same model and cached, so query embedding never enters a measurement.
 
 ### Metadata and filters
 
-Each chunk carries a source path, a **real** modification date taken from the
-originating repository's git history (`git log`, newest commit touching the
-file), and tags derived from its path. Real dates matter: randomly assigned
-dates would be uncorrelated with content and would make date filtering
-unrealistically easy, whereas real dates correlate with topic. Dates span
-2018-12-27 to 2026-08-25; all 100,000 chunks carry one.
+Each chunk carries a source path, a real modification date taken from the originating repository's git history via `git log`, and tags derived from its path.
 
-Filter predicates are `folder IN (...) AND mtime >= T`. A single-valued
-category was used rather than multi-valued tags because that is the richest
-predicate all five engines can express — sqlite-vec's `vec0` metadata columns
-have no array-contains operator, so multi-valued tag filters would have
-required denormalising the schema for one engine and not the others.
+Real dates matter here. Randomly assigned dates would be uncorrelated with content, which would make date filtering unrealistically easy. Real dates correlate with topic, because active areas of a documentation set get edited together. Dates span 2018-12-27 to 2026-08-25, and all 100,000 chunks carry one.
 
-Selectivities were calibrated by exhaustive search over (top-N folders ×
-date quantile) against the real corpus distribution, so they are measured, not
-assumed:
+Filter predicates are `folder IN (...) AND mtime >= T`. A single-valued category was used in place of multi-valued tags because it is the richest predicate all five engines can express. sqlite-vec's `vec0` metadata columns have no array-contains operator, so a multi-valued tag filter would have meant denormalising the schema for one engine and leaving the others alone.
+
+Selectivities were calibrated by exhaustive search over top-N folders crossed with date quantiles, evaluated against the real corpus distribution. The figures below are measured, not targets:
 
 | filter | target | measured | folders | modified since | matches at 1k / 10k / 100k |
 |---|---:|---:|---:|---|---|
@@ -116,26 +70,15 @@ assumed:
 
 ### Measurement
 
-Ground truth is exact brute force (numpy dot product) recomputed for every
-corpus size and every filter condition. Brute force in the harness reproduces
-it at recall 1.000 everywhere, which is the correctness gate.
+Ground truth is exact brute force, computed with a numpy dot product and recomputed for every corpus size and every filter condition. The harness brute-force engine reproduces it at recall 1.000 everywhere, which acts as the correctness gate.
 
-Each run is a fresh Node process, so resident memory is attributable to one
-engine. Every configuration was run **3 times**; the median is reported.
-Rep-to-rep spread on the headline 100k p50 was 1.0% (brute), 1.4%
-(sqlite-vec), 1.8% (Orama), 6.3% (LanceDB) and 9.6% (Qdrant Edge) — small
-enough that none of the conclusions turn on it.
+Each run is a fresh Node process, so resident memory is attributable to a single engine. Every configuration was run three times and the median is reported. Rep-to-rep spread on the headline 100k p50 was 1.0% for brute force, 1.4% for sqlite-vec, 1.8% for Orama, 6.3% for LanceDB and 9.6% for Qdrant Edge. None of the conclusions below turn on differences that small.
 
-Latency is p50/p95 over all 200 queries after a 20-query warmup. A cold pass
-was measured separately; it differed from warm by only a few percent for every
-engine, so only warm figures are tabulated. The corpus contains 567
-exact-duplicate vectors out of 100,000 (0.57%), too few for tie-breaking to
-place a meaningful ceiling on measured recall.
+Latency is p50 and p95 over all 200 queries after a 20-query warmup. A cold pass was measured separately and differed from warm by a few percent for every engine, so only warm figures are tabulated. The corpus contains 567 exact-duplicate vectors out of 100,000, which is 0.57%. That is too few for tie-breaking to place a meaningful ceiling on measured recall.
 
 ### Environment
 
-AMD Ryzen 7 5700G (8 cores / 16 threads), 32 GB RAM, Windows 11 Pro N
-10.0.26200, Node v24.17.0, Python 3.12.3, rustc 1.97.1.
+AMD Ryzen 7 5700G with 8 cores and 16 threads, 32 GB RAM, Windows 11 Pro N 10.0.26200, Node v24.17.0, Python 3.12.3, rustc 1.97.1.
 
 | package | version |
 |---|---|
@@ -145,8 +88,7 @@ AMD Ryzen 7 5700G (8 cores / 16 threads), 32 GB RAM, Windows 11 Pro N
 | `@lancedb/lancedb` | 0.37.1 |
 | `qdrant-edge` (crate) | 0.7.2 |
 
-Note that the spec's candidate table named `orama`, which on npm is a stale
-2.0.6. The live package is `@orama/orama`.
+The brief named `orama`, which on npm is a stale 2.0.6. The live package is `@orama/orama`.
 
 ---
 
@@ -186,19 +128,13 @@ Note that the spec's candidate table named `orama`, which on npm is a stale
 | LanceDB (IVF_FLAT) | 5.4 s | 10.33 ms | 11.25 ms | exact | 1,397 MB | 309.5 MB |
 | Qdrant Edge | 15.2 s | 0.52 ms | 0.68 ms | exact | 526 MB | 549.7 MB |
 
-Recall is reported as "exact" where it is 1.000 to three decimal places.
-"On-disk" is everything the engine wrote into its own directory, measured
-after close so that write-ahead logs have been checkpointed. For the two
-in-memory engines it is what a plugin would have to persist: raw float32
-plus metadata for brute force, and Orama's own `save()` output for Orama.
+Recall is reported as "exact" where it is 1.000 to three decimal places. On-disk is everything the engine wrote into its own directory, measured after close so that write-ahead logs have been checkpointed. For the two in-memory engines it is what a plugin would have to persist: raw float32 plus metadata for brute force, and Orama's own `save()` output for Orama.
 
 ---
 
 ## 4. Filtered search
 
-This is the case worth building the apparatus for. The realistic query is not
-"find similar chunks" but "find chunks similar to this, from notes in these
-folders, modified since some date".
+The realistic query is not a bare similarity search. It is closer to "find chunks similar to this, from notes in these folders, changed since some date".
 
 #### permissive (~80.0% of corpus)
 
@@ -209,7 +145,7 @@ folders, modified since some date".
 | sqlite-vec | 0.88 ms / exact | 16.12 ms / exact | 156.17 ms / exact |
 | LanceDB (default IVF_PQ) | 1.80 ms / 0.700 | 2.15 ms / 0.500 | 5.89 ms / 0.500 |
 | LanceDB + refineFactor(10) | 3.35 ms / exact | 4.42 ms / exact | 8.06 ms / exact |
-| LanceDB (IVF_FLAT) | — | — | 11.42 ms / exact |
+| LanceDB (IVF_FLAT) | n/a | n/a | 11.42 ms / exact |
 | Qdrant Edge | 0.21 ms / exact | 0.36 ms / exact | 1.25 ms / exact |
 
 #### moderate (~20.0% of corpus)
@@ -221,7 +157,7 @@ folders, modified since some date".
 | sqlite-vec | 0.70 ms / exact | 14.18 ms / exact | 138.74 ms / exact |
 | LanceDB (default IVF_PQ) | 1.83 ms / 0.700 | 1.98 ms / 0.600 | 4.29 ms / 0.500 |
 | LanceDB + refineFactor(10) | 3.34 ms / exact | 4.17 ms / exact | 6.45 ms / exact |
-| LanceDB (IVF_FLAT) | — | — | 6.48 ms / exact |
+| LanceDB (IVF_FLAT) | n/a | n/a | 6.48 ms / exact |
 | Qdrant Edge | 0.08 ms / exact | 0.32 ms / exact | 0.89 ms / exact |
 
 #### restrictive (~1.0% of corpus)
@@ -233,12 +169,12 @@ folders, modified since some date".
 | sqlite-vec | 0.60 ms / exact | 13.49 ms / exact | 130.66 ms / exact |
 | LanceDB (default IVF_PQ) | 1.64 ms / exact | 1.81 ms / 0.600 | 4.24 ms / 0.400 |
 | LanceDB + refineFactor(10) | 2.43 ms / exact | 3.77 ms / exact | 6.49 ms / exact |
-| LanceDB (IVF_FLAT) | — | — | 3.44 ms / exact |
+| LanceDB (IVF_FLAT) | n/a | n/a | 3.44 ms / exact |
 | Qdrant Edge | 0.04 ms / exact | 0.07 ms / exact | 0.20 ms / exact |
 
 #### Results returned (k=10 requested)
 
-Mean results returned at 100,000 chunks. A count below 10 where more than 10 chunks match the filter is the signature of search-then-discard: matches are lost, not merely ranked lower.
+Mean results returned at 100,000 chunks. A count below 10 where more than 10 chunks match the filter is the signature of search-then-discard. Those matches are lost, and not simply ranked lower.
 
 | engine | permissive | moderate | restrictive |
 |---|---:|---:|---:|
@@ -252,112 +188,63 @@ Mean results returned at 100,000 chunks. A count below 10 where more than 10 chu
 
 ### Which strategy is each engine using?
 
-The discriminating evidence is how latency responds to selectivity. If an
-engine filters first and scans the survivors, a 1% filter should cost roughly
-1% of an unfiltered scan. If it scans the whole index and applies the predicate
-along the way, selectivity should not help at all.
+The discriminating evidence is how latency responds to selectivity. An engine that filters first and scans the survivors should spend about 1% of a full scan on a 1% filter. An engine that searches the whole index and applies the predicate along the way should show no benefit from selectivity at all.
 
-Ratio of restrictive-filter p50 to unfiltered p50 (lower = filter is pruning work):
+The table gives the ratio of restrictive-filter p50 to unfiltered p50, so a lower number means the filter is pruning work. The strategy column is inference from these ratios, not something read off documentation or source.
 
-| engine | 1,000 | 10,000 | 100,000 | reading |
+| engine | 1,000 | 10,000 | 100,000 | inferred strategy |
 |---|---:|---:|---:|---|
 | brute force | 0.028 | 0.020 | 0.022 | filter first, scan survivors |
 | Orama | 0.035 | 0.010 | 0.008 | filter first, scan survivors |
-| Qdrant Edge | 0.809 | 0.464 | 0.378 | index traversal, partial pruning |
+| Qdrant Edge | 0.809 | 0.464 | 0.378 | index traversal with partial pruning |
 | sqlite-vec | 0.971 | 0.992 | 0.976 | full scan, predicate applied inline |
 | LanceDB (IVF_PQ) | 1.146 | 1.065 | 1.177 | full index search, no pruning benefit |
 
-Brute force and Orama track selectivity almost exactly — a 1% filter costs
-about 1% of the work, which is what filter-then-scan predicts. sqlite-vec's
-ratio sits at ~0.98 across every size: the filter saves nothing, and at the
-permissive setting the predicate makes queries *slower* than no filter at all
-(156.17 ms vs 133.81 ms at 100k). LanceDB is worse than neutral — filtered
-queries consistently cost more than unfiltered ones with no latency benefit
-from selectivity. Qdrant Edge lands in between, consistent with a planner that
-estimates cardinality and prunes partially rather than degenerating to either
-extreme.
+Brute force and Orama track selectivity almost exactly, which is what filter-then-scan predicts.
+
+sqlite-vec's ratio sits near 0.98 at every size. The filter saves it nothing, and under the permissive setting the predicate makes queries slower than running with no filter at all: 156.17 ms against 133.81 ms at 100k.
+
+LanceDB comes out worse than neutral. Its filtered queries consistently cost more than its unfiltered ones and gain nothing from selectivity.
+
+Qdrant Edge lands between the two groups. That is consistent with a planner estimating cardinality and pruning partially, though the ratios alone cannot establish the mechanism, and I did not read its planner source to confirm it.
 
 ### The failure mode that did not appear
 
-The classic naive implementation searches the index for k results and then
-discards non-matching ones, which silently loses recall when the filter is
-selective. **No engine tested did this.** Every engine returned a full 10
-results at every selectivity where 10 matches existed, and exactly 8 at the
-one configuration where only 8 chunks matched the filter (1k / restrictive).
-Filtered recall was 1.000 for every engine at every size, with the sole
-exception of LanceDB's default index — and that loss is quantisation error,
-not a filtering bug, since it loses the same recall on unfiltered queries.
+A naive implementation searches the index for k results and then discards the ones that fail the filter, which silently loses recall when the filter is selective. None of the five engines did this.
 
-This is a real negative result: the failure the spec anticipated at 1%
-selectivity is not present in any of these five engines as of the versions
-tested.
+Every engine returned a full 10 results at every selectivity where 10 matches existed, and exactly 8 in the one configuration where only 8 chunks matched the filter, at 1k with the restrictive filter. Filtered recall was 1.000 for every engine at every size, with one exception: LanceDB's default index. That loss is quantisation error, since the same index loses the same recall on unfiltered queries.
+
+This is a negative result worth recording. The failure predicted at 1% selectivity is absent from all five engines at the versions tested.
 
 ---
 
 ## 5. The crossover
 
-**For unfiltered search there is no crossover inside the tested range at which
-a real index becomes necessary** — only one at which it becomes nice to have.
+There is no size inside the tested range at which unfiltered search requires a real index. There is only a size at which one becomes convenient.
 
-Brute force scales precisely linearly at **0.327 ms per 1,000 chunks**
-(0.271 ms at 1k, 3.285 ms at 10k, 32.665 ms at 100k). Extrapolating that line:
+Brute force scales linearly at 0.327 ms per 1,000 chunks: 0.271 ms at 1k, 3.285 ms at 10k, 32.665 ms at 100k. Extrapolating that line puts it at 50 ms around 153,000 chunks, 100 ms around 306,000, and 200 ms around 612,000.
 
-- 50 ms at ~153,000 chunks
-- 100 ms at ~306,000 chunks
-- 200 ms at ~612,000 chunks
+A vault would need roughly 150,000 chunks before a plain array stopped feeling instant, and roughly 300,000 before it became irritating. The 100,000-chunk corpus used here is 35 million tokens of prose, which is already well past what most people accumulate.
 
-A vault would need roughly 150,000 chunks before a plain array stopped feeling
-instant, and roughly 300,000 before it became annoying. For reference, the
-100,000-chunk corpus here is 35 million tokens of prose — far beyond what most
-people have.
+Three places where a real index does pay:
 
-Where a real index does pay:
+- Qdrant Edge is faster at every size, by 5.5x at 1k and 62.5x at 100k, and stays exact throughout. Its costs are 15.2 s to build at 100k, 550 MB on disk, and a Rust toolchain.
+- LanceDB with `refineFactor(10)` is 5.5x faster than brute force at 100k and exact, for 26 s of build time.
+- Neither sqlite-vec nor Orama is faster than the plain array at any size above 1k.
 
-- **Qdrant Edge is faster at every size**, by 5x at 1k and 63x at 100k, while
-  staying exact. If the goal is the lowest achievable latency, it wins
-  outright. It costs 15.2 s to build at 100k, 550 MB on disk, and a Rust
-  toolchain.
-- **LanceDB with `refineFactor(10)`** is 5.5x faster than brute force at 100k
-  and exact, at 26 s build time.
-- **sqlite-vec and Orama are both slower than the plain array at every size
-  above 1k**, while offering nothing brute force does not.
+The result that runs against expectation is that the two engines a plugin author is most likely to reach for are the two that lose to the array they would replace. Orama gets picked because it is JS-native and sqlite-vec because SQLite feels like the responsible option. At 100k Orama is 2.75x slower than brute force and holds 2.2 GB resident, and sqlite-vec is 4.10x slower.
 
-The counterintuitive result is that the two engines a plugin author is most
-likely to reach for — Orama because it is JS-native, sqlite-vec because SQLite
-feels like the responsible choice — are the two that lose to the array they
-would replace. Orama at 100k is 2.7x slower than brute force and holds 2.2 GB
-resident. sqlite-vec at 100k is 4.1x slower.
-
-sqlite-vec's result is worth stating plainly because it is surprising for a C
-extension. It is not an artifact of the distance metric: rebuilding the table
-with `distance_metric=L2` (equivalent ranking for normalised vectors) gave
-139 ms against cosine's 152 ms in the same session — a marginal difference, not
-a fourfold one.
+sqlite-vec's result is surprising for a C extension, so I tested the obvious explanation instead of assuming one. It is not the distance metric. Rebuilding the table with `distance_metric=L2`, which gives equivalent ranking for normalised vectors, produced 139 ms against cosine's 152 ms in the same session. That is a marginal difference and not a fourfold one. I did not establish what does account for the gap.
 
 ### Where each engine stops being viable
 
-- **Orama cannot be persisted at 100k.** `JSON.stringify(save(db))` throws
-  `RangeError: Invalid string length` — the serialised index exceeds V8's
-  maximum string length. Its latency and recall at 100k are in the table
-  because they were measured before persistence was attempted, but a plugin
-  could not save this index without a binary persistence format. At 10k it
-  persists, but to a 141 MB JSON file for 15.7 MB of vectors.
-- **LanceDB's default index is lossy from the very first size tested.** It
-  reports recall 0.700 at 1k and 0.500 at 10k and 100k. This is IVF_PQ product
-  quantisation working as designed, but 50% recall is not a reasonable default
-  for semantic search, so it was treated as pathological under the spec's
-  carve-out and remedied with documented options: `refineFactor(10)` restores
-  recall to 1.000 for a 1.7x latency cost, and `Index.ivfFlat()` also restores
-  it at 10.33 ms, 1.4 GB resident and 309 MB on disk. Both are one-line
-  changes; neither is on by default.
-- **Qdrant Edge preallocates disk aggressively.** At 1,000 chunks it occupies
-  152 MB, dominated by two 32 MiB write-ahead-log segments and 32 MiB
-  preallocated payload and vector pages. `du` confirms these are genuinely
-  allocated, not sparse. At 100k it reaches 550 MB for 154 MB of vectors.
-- **Qdrant Edge stays exact below its indexing threshold.** At 1k it reported
-  no HNSW index built (the default threshold is expressed in KB of segment
-  size); it builds one at 10k and 100k. Notably it returned recall 1.000 at
-  both indexed sizes, so HNSW cost nothing in accuracy here at k=10.
+**Orama cannot be persisted at 100k.** `JSON.stringify(save(db))` throws `RangeError: Invalid string length`, because the serialised index exceeds V8's maximum string length. Its latency and recall at 100k appear in the table because they were measured before persistence was attempted, but a plugin could not save this index without a binary persistence format. At 10k it does persist, to a 141 MB JSON file holding 15.7 MB of vectors.
+
+**LanceDB's default index is lossy from the first size tested.** It reports recall 0.700 at 1k and 0.500 at both 10k and 100k. This is IVF_PQ product quantisation working as designed, but 50% recall is not a reasonable default for semantic search, so I treated it as pathological under the brief's carve-out and measured two documented remedies. `refineFactor(10)` restores recall to 1.000 for a 1.7x latency cost. `Index.ivfFlat()` also restores it, at 10.33 ms, 1.4 GB resident and 309 MB on disk. Both are one-line changes and neither is on by default.
+
+**Qdrant Edge preallocates disk aggressively.** At 1,000 chunks it occupies 152 MB, dominated by two 32 MiB write-ahead-log segments plus 32 MiB preallocated payload and vector pages. `du` confirms these blocks are genuinely allocated and not sparse. At 100k it reaches 550 MB to hold 154 MB of vectors.
+
+**Qdrant Edge stays exact below its indexing threshold.** At 1k it reported no HNSW index built, the default threshold being expressed in KB of segment size. It builds one at 10k and 100k. It returned recall 1.000 at both indexed sizes, so HNSW cost nothing in accuracy here at k=10.
 
 ---
 
@@ -367,105 +254,48 @@ For a plugin author choosing a store, installation is part of the comparison.
 
 | engine | install | measured |
 |---|---|---|
-| brute force | none | 0 s — it is a `Float32Array` |
+| brute force | none | 0 s, it is a `Float32Array` |
 | Orama | `npm i @orama/orama` | part of the 78 s below |
 | sqlite-vec | `npm i sqlite-vec better-sqlite3` | part of the 78 s below |
 | LanceDB | `npm i @lancedb/lancedb` | part of the 78 s below |
-| Qdrant Edge | `cargo` + a hand-written napi binding | see below |
+| Qdrant Edge | `cargo` plus a hand-written napi binding | see below |
 
-A cold-cache `npm install` of all four JavaScript engines together took
-**78 s** and produced a prebuilt native binary for each. No compiler was
-needed.
+A cold-cache `npm install` of all four JavaScript engines together took 78 s and produced a prebuilt native binary for each. No compiler was needed.
 
-sqlite-vec cost one non-obvious debugging session that is worth recording:
-`better-sqlite3` binds JavaScript numbers as SQLite `REAL`, and `vec0` strictly
-requires `INTEGER` for its primary key and integer metadata columns. Every id,
-every `k`, and every integer filter bound has to be a `BigInt` or inserts fail
-with `Only integers are allows for primary key values`. Nothing in either
-package's documentation connects those two facts.
+sqlite-vec cost one non-obvious debugging session worth recording. `better-sqlite3` binds JavaScript numbers as SQLite `REAL`, and `vec0` strictly requires `INTEGER` for its primary key and integer metadata columns. Every id, every `k` and every integer filter bound has to be a `BigInt`, or inserts fail with `Only integers are allows for primary key values`. Nothing in either package's documentation connects those two facts.
 
 ### The Qdrant Edge caveat, revised
 
-**The spec's premise here is out of date, and the correction is favourable.**
-Section 6 states that Qdrant Edge cannot be driven from Node without building
-`uniffi-bindgen-react-native` from its uniffi 0.32 branch and using `@ubjs/core`
-from a local checkout, and that its numbers are therefore not independently
-reproducible.
+The brief states that Qdrant Edge cannot be driven from Node without building `uniffi-bindgen-react-native` from its uniffi 0.32 branch and using `@ubjs/core` from a local checkout, and that its numbers are therefore not independently reproducible.
 
-That is no longer the situation. **`qdrant-edge` is published on crates.io**
-(version 0.7.2, Apache-2.0) and fetches and builds with an ordinary
-`cargo add qdrant-edge`. No uniffi, no branch builds, no local checkouts, no
-private beta. The published `uniffi-bindgen-react-native` and `@ubjs/core`
-packages are indeed still at 0.31.0-5, so the spec was accurate about *that*
-path — but that path is no longer the only one.
+For this benchmark's purposes that is no longer the constraint. `qdrant-edge` is published on crates.io at version 0.7.2 under Apache-2.0, and it fetches and builds with an ordinary `cargo add qdrant-edge`. The published `uniffi-bindgen-react-native` and `@ubjs/core` packages are indeed still at 0.31.0-5, so the brief was accurate about that path. It is no longer the only path to a Node binding.
 
-What this benchmark did instead was write a ~120-line napi-rs binding
-(`engines-native/qe-napi`) exposing exactly three operations. Filters are
-constructed from Qdrant's own JSON filter syntax rather than its internal Rust
-types, which keeps the binding independent of the crate's type layout.
+What I did instead was write a napi-rs binding of about 120 lines in `engines-native/qe-napi`, exposing three operations. Filters are constructed from Qdrant's own JSON filter syntax instead of its internal Rust types, which keeps the binding independent of the crate's type layout.
 
-**Qdrant Edge's numbers here are therefore independently reproducible**, from
-published packages, by anyone with a Rust toolchain. The remaining setup cost
-is real but ordinary:
+Qdrant Edge's numbers here are therefore independently reproducible from published packages by anyone with a Rust toolchain. The remaining setup cost is real but ordinary:
 
-- A clean `cargo build --release` of the binding took **500 s** (8m20s) on
-  this machine, compiling 370 crates — Qdrant Edge vendors a large slice of
-  the Qdrant engine. Dependency fetch beforehand took well under a minute.
-  Against 78 s and no compiler for all four npm engines combined, that is
-  roughly a sixfold wait, once.
-- Writing the binding: roughly 120 lines of Rust, requiring familiarity with
-  napi-rs and with Qdrant's `EdgeShard` / `CollectionUpdateOperations` /
-  `CoreSearchRequest` API. This is the genuine cost, and it is a different
-  kind of cost from `npm install` — it is not a wait, it is engineering.
-- The binding here was compiled with `lto = true`, which is not the default
-  release profile. That is favourable to Qdrant Edge and is disclosed here;
-  it lengthens the build considerably.
+- A clean `cargo build --release` of the binding took 500 s, about 8m20s, compiling 370 crates. Qdrant Edge vendors a large slice of the Qdrant engine. Dependency fetch beforehand took well under a minute. Against 78 s and no compiler for all four npm engines together, that is roughly a sixfold wait, paid once.
+- Writing the binding took about 120 lines of Rust and required familiarity with napi-rs and with Qdrant's `EdgeShard`, `CollectionUpdateOperations` and `CoreSearchRequest` types. This is the real cost, and it differs in kind from `npm install`. It is engineering time, not waiting time.
+- The binding was compiled with `lto = true`, which is not the default release profile. That setting favours Qdrant Edge and lengthens the build considerably. It is disclosed here for that reason.
 
-One further caveat: the Qdrant Edge adapter receives vectors as a single packed
-buffer, whereas the JavaScript engines receive JavaScript arrays or objects
-because that is their documented interface. Its build times are therefore a
-lower bound relative to the others.
+One further asymmetry: the Qdrant Edge adapter receives vectors as a single packed buffer, while the JavaScript engines receive JavaScript arrays or objects because that is their documented interface. Its build times are a lower bound relative to the others.
 
 ---
 
 ## 7. What this does not tell you
 
-- **One machine.** A single Ryzen 7 5700G with 32 GB of RAM running Windows 11.
-  Relative ordering on a low-power ARM laptop, or on a machine where 2.2 GB of
-  resident memory triggers swapping, could differ. Orama's memory figure in
-  particular would be disqualifying on a smaller machine long before its
-  latency was.
-- **One embedding model, one dimensionality.** 384-dimensional MiniLM vectors.
-  Approximate indexes behave differently at 768 or 1536 dimensions, and PQ
-  compression ratios that lose half the recall at 384 dimensions may lose less
-  at higher ones.
-- **One chunking scheme.** 256 tokens, stride 224. Chunk length affects the
-  duplicate rate and the clustering structure of the embedding space, which is
-  exactly what approximate indexes are sensitive to.
-- **Read-heavy, no concurrent writes.** Every index was built once and then
-  queried. A vault is incrementally updated as notes change, and none of these
-  engines was tested for incremental insert, delete, or re-index cost. That is
-  a real workload difference and it is the most likely place these conclusions
-  would break down — an engine that is slow to query but cheap to update
-  incrementally may still be the right choice.
-- **k=10 only.** Recall@10 with `limit=10`. Approximate indexes generally
-  degrade at larger k, and Qdrant Edge's perfect recall here should not be read
-  as perfect recall at k=100.
-- **Documented defaults, mostly.** No engine was tuned beyond its documented
-  options, except LanceDB, where the default was treated as pathological and
-  two documented remedies were measured and labelled.
-- **No hybrid search.** BM25 combined with vectors is out of scope and is where
-  several of these engines differentiate themselves; Orama and Qdrant Edge both
-  ship full-text capability that went entirely unmeasured here.
+- **One machine.** A single Ryzen 7 5700G with 32 GB of RAM running Windows 11. Relative ordering on a low-power ARM laptop, or on a machine where 2.2 GB resident triggers swapping, could differ. Orama's memory figure would be disqualifying on a smaller machine long before its latency was.
+- **One embedding model at one dimensionality.** 384-dimensional MiniLM vectors. Approximate indexes behave differently at 768 or 1536 dimensions, and PQ compression that costs half the recall at 384 dimensions may cost less higher up.
+- **One chunking scheme.** 256 tokens at stride 224. Chunk length affects the duplicate rate and the clustering structure of the embedding space, which is what approximate indexes are sensitive to.
+- **Read-heavy with no concurrent writes.** Every index was built once and then queried. A vault is updated incrementally as notes change, and no engine here was tested for incremental insert or delete cost. This is the most likely place these conclusions break down. An engine that queries slowly but updates cheaply may still be the right choice.
+- **k=10 only.** Recall@10 with `limit=10`. Approximate indexes generally degrade at larger k, so Qdrant Edge's perfect recall here should not be read as perfect recall at k=100.
+- **Documented defaults, with one exception.** No engine was tuned beyond its documented options except LanceDB, where the default was treated as pathological and two documented remedies were measured and labelled as such.
+- **No hybrid search.** BM25 combined with vectors was out of scope, and it is where several of these engines differentiate themselves. Orama and Qdrant Edge both ship full-text capability that went entirely unmeasured.
 
 ---
 
 ## 8. Prior art
 
-`photostructure/node-vector-bench` benchmarks sqlite-vec, USearch, LanceDB and
-DuckDB VSS with Node bindings from 1k to 2M vectors. It is a more thorough
-performance harness than this one and covers larger scales. It differs in three
-ways that matter for the question asked here: it uses **synthetic** vectors
-from a Gaussian mixture rather than real embeddings, it does not cover Orama or
-Qdrant Edge, and it does not measure filtered search at controlled
-selectivities — which is the case this report exists to examine.
+`photostructure/node-vector-bench` benchmarks sqlite-vec, USearch, LanceDB and DuckDB VSS through Node bindings from 1k to 2M vectors. It is a more thorough performance harness than this one and covers larger scales.
+
+It differs in three ways that matter for the question asked here. It uses synthetic vectors drawn from a Gaussian mixture in place of real embeddings. It does not cover Orama or Qdrant Edge. It does not measure filtered search at controlled selectivities, which is the case this report exists to examine.

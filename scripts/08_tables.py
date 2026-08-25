@@ -11,7 +11,7 @@ def get(e, s):
     for r in rows:
         if r["engine"] == e and r["size"] == s: return r
     return None
-def f(x, d=2, dash="—"):
+def f(x, d=2, dash="n/a"):
     return dash if x is None else f"{x:,.{d}f}"
 
 out = []
@@ -40,7 +40,7 @@ for fname in ("permissive", "moderate", "restrictive"):
         for s in sizes:
             r = get(e, s)
             d = r["filtered"].get(fname) if r else None
-            if not d: cells.append("—"); continue
+            if not d: cells.append("n/a"); continue
             rec = "exact" if d["recall"] is not None and d["recall"] >= 0.9995 else f(d["recall"], 3)
             cells.append(f"{f(d['p50'],2)} ms / {rec}")
         out.append(f"| {LABEL[e]} | " + " | ".join(cells) + " |")
@@ -49,7 +49,7 @@ out.append("\n### Results returned (k=10 requested)\n")
 big = sizes[-1]
 out.append(f"Mean results returned at {big:,} chunks. A count below 10 where "
            "more than 10 chunks match the filter is the signature of "
-           "search-then-discard: matches are lost, not merely ranked lower." + chr(10) + "")
+           "search-then-discard. Those matches are lost, and not simply ranked lower." + chr(10) + "")
 out.append("| engine | " + " | ".join(f"{n}" for n in ("permissive","moderate","restrictive")) + " |")
 out.append("|---|" + "---:|" * 3)
 for e in ORDER:

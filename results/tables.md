@@ -45,7 +45,7 @@
 | sqlite-vec | 0.88 ms / exact | 16.12 ms / exact | 156.17 ms / exact |
 | LanceDB (default IVF_PQ) | 1.80 ms / 0.700 | 2.15 ms / 0.500 | 5.89 ms / 0.500 |
 | LanceDB + refineFactor(10) | 3.35 ms / exact | 4.42 ms / exact | 8.06 ms / exact |
-| LanceDB (IVF_FLAT) | — | — | 11.42 ms / exact |
+| LanceDB (IVF_FLAT) | n/a | n/a | 11.42 ms / exact |
 | Qdrant Edge | 0.21 ms / exact | 0.36 ms / exact | 1.25 ms / exact |
 
 ### moderate (~20.0% of corpus)
@@ -57,7 +57,7 @@
 | sqlite-vec | 0.70 ms / exact | 14.18 ms / exact | 138.74 ms / exact |
 | LanceDB (default IVF_PQ) | 1.83 ms / 0.700 | 1.98 ms / 0.600 | 4.29 ms / 0.500 |
 | LanceDB + refineFactor(10) | 3.34 ms / exact | 4.17 ms / exact | 6.45 ms / exact |
-| LanceDB (IVF_FLAT) | — | — | 6.48 ms / exact |
+| LanceDB (IVF_FLAT) | n/a | n/a | 6.48 ms / exact |
 | Qdrant Edge | 0.08 ms / exact | 0.32 ms / exact | 0.89 ms / exact |
 
 ### restrictive (~1.0% of corpus)
@@ -69,12 +69,12 @@
 | sqlite-vec | 0.60 ms / exact | 13.49 ms / exact | 130.66 ms / exact |
 | LanceDB (default IVF_PQ) | 1.64 ms / exact | 1.81 ms / 0.600 | 4.24 ms / 0.400 |
 | LanceDB + refineFactor(10) | 2.43 ms / exact | 3.77 ms / exact | 6.49 ms / exact |
-| LanceDB (IVF_FLAT) | — | — | 3.44 ms / exact |
+| LanceDB (IVF_FLAT) | n/a | n/a | 3.44 ms / exact |
 | Qdrant Edge | 0.04 ms / exact | 0.07 ms / exact | 0.20 ms / exact |
 
 ### Results returned (k=10 requested)
 
-Mean results returned at 100,000 chunks. A count below 10 where more than 10 chunks match the filter is the signature of search-then-discard: matches are lost, not merely ranked lower.
+Mean results returned at 100,000 chunks. A count below 10 where more than 10 chunks match the filter is the signature of search-then-discard. Those matches are lost, and not simply ranked lower.
 
 | engine | permissive | moderate | restrictive |
 |---|---:|---:|---:|
