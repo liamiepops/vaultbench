@@ -1,0 +1,44 @@
+{
+ "engine": "brute",
+ "size": 10000,
+ "rep": 2,
+ "k": 10,
+ "nQueries": 200,
+ "buildMs": 1.1718999743461609,
+ "indexed": null,
+ "indexError": null,
+ "coldP50": 3.412999987602234,
+ "p50": 3.2731000185012817,
+ "p95": 3.5350000262260437,
+ "mean": 3.214469498991966,
+ "recall": 1,
+ "filtered": {
+  "permissive": {
+   "selectivity": 0.80003,
+   "p50": 2.4747999906539917,
+   "p95": 2.7749000191688538,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  },
+  "moderate": {
+   "selectivity": 0.20004,
+   "p50": 0.6164000034332275,
+   "p95": 0.7245000004768372,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  },
+  "restrictive": {
+   "selectivity": 0.00994,
+   "p50": 0.06599998474121094,
+   "p95": 0.07439994812011719,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  }
+ },
+ "rssBytes": 223145984,
+ "heapBytes": 8246624,
+ "diskBytes": 15681428
+}

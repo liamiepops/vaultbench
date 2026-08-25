@@ -1,0 +1,44 @@
+{
+ "engine": "lancedb-refine",
+ "size": 100000,
+ "rep": 2,
+ "k": 10,
+ "nQueries": 200,
+ "buildMs": 26044.193499982357,
+ "indexed": true,
+ "indexError": null,
+ "coldP50": 6.0764999985694885,
+ "p50": 5.900700032711029,
+ "p95": 6.637600004673004,
+ "mean": 5.94142749786377,
+ "recall": 1,
+ "filtered": {
+  "permissive": {
+   "selectivity": 0.80003,
+   "p50": 8.093100011348724,
+   "p95": 8.905099987983704,
+   "recall": 1,
+   "recallMean": 0.9030000000000008,
+   "returnedMean": 10
+  },
+  "moderate": {
+   "selectivity": 0.20004,
+   "p50": 6.4478999972343445,
+   "p95": 7.1908000111579895,
+   "recall": 1,
+   "recallMean": 0.8870000000000006,
+   "returnedMean": 10
+  },
+  "restrictive": {
+   "selectivity": 0.00994,
+   "p50": 6.572599947452545,
+   "p95": 7.132000029087067,
+   "recall": 1,
+   "recallMean": 0.8775000000000007,
+   "returnedMean": 10
+  }
+ },
+ "rssBytes": 646299648,
+ "heapBytes": 43985232,
+ "diskBytes": 158719502
+}

@@ -1,0 +1,16 @@
+node_modules/
+corpus-src/
+corpus-dotnet/
+corpus-k8s/
+corpus-ha/
+models/
+idx/
+tmpidx/
+probe/
+data/*.f32
+data/chunks.jsonl
+data/gitlog.raw
+data/*.raw
+engines-native/*/target/
+logs/
+engines-native/*/*.node

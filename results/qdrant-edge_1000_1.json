@@ -1,0 +1,44 @@
+{
+ "engine": "qdrant-edge",
+ "size": 1000,
+ "rep": 1,
+ "k": 10,
+ "nQueries": 200,
+ "buildMs": 122.42610001564026,
+ "indexed": false,
+ "indexError": null,
+ "coldP50": 0.058300018310546875,
+ "p50": 0.04999995231628418,
+ "p95": 0.0582999587059021,
+ "mean": 0.05133599936962128,
+ "recall": 1,
+ "filtered": {
+  "permissive": {
+   "selectivity": 0.80003,
+   "p50": 0.20560002326965332,
+   "p95": 0.2443000078201294,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  },
+  "moderate": {
+   "selectivity": 0.20004,
+   "p50": 0.08090001344680786,
+   "p95": 0.09520000219345093,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  },
+  "restrictive": {
+   "selectivity": 0.00994,
+   "p50": 0.0396999716758728,
+   "p95": 0.0504000186920166,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 8
+  }
+ },
+ "rssBytes": 222179328,
+ "heapBytes": 5082904,
+ "diskBytes": 152176555
+}

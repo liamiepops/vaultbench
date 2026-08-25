@@ -1,0 +1,22 @@
+{
+ "mdn": {
+  "files": 13117,
+  "tokens": 9411622,
+  "chunks": 45763
+ },
+ "dotnet": {
+  "files": 11974,
+  "tokens": 10787529,
+  "chunks": 51565
+ },
+ "k8s": {
+  "files": 1814,
+  "tokens": 4421367,
+  "chunks": 20266
+ },
+ "hass": {
+  "files": 3734,
+  "tokens": 10535140,
+  "chunks": 48115
+ }
+}

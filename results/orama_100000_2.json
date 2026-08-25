@@ -1,0 +1,45 @@
+{
+ "engine": "orama",
+ "size": 100000,
+ "rep": 2,
+ "k": 10,
+ "nQueries": 200,
+ "buildMs": 1913.268199980259,
+ "indexed": null,
+ "indexError": null,
+ "coldP50": 84.78539997339249,
+ "p50": 89.26340001821518,
+ "p95": 102.14520001411438,
+ "mean": 90.07281600177288,
+ "recall": 1,
+ "filtered": {
+  "permissive": {
+   "selectivity": 0.80003,
+   "p50": 121.0091000199318,
+   "p95": 134.88440001010895,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  },
+  "moderate": {
+   "selectivity": 0.20004,
+   "p50": 31.016200006008148,
+   "p95": 36.2296000123024,
+   "recall": 1,
+   "recallMean": 0.9990000000000001,
+   "returnedMean": 10
+  },
+  "restrictive": {
+   "selectivity": 0.00994,
+   "p50": 0.7605000138282776,
+   "p95": 1.0079999566078186,
+   "recall": 1,
+   "recallMean": 0.9535000000000002,
+   "returnedMean": 10
+  }
+ },
+ "persistError": "Invalid string length",
+ "rssBytes": 2199863296,
+ "heapBytes": 429270920,
+ "diskBytes": 0
+}

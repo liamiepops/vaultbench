@@ -1,0 +1,44 @@
+{
+ "engine": "sqlite-vec",
+ "size": 10000,
+ "rep": 2,
+ "k": 10,
+ "nQueries": 200,
+ "buildMs": 279.3488000035286,
+ "indexed": null,
+ "indexError": null,
+ "coldP50": 13.835700035095215,
+ "p50": 13.597099959850311,
+ "p95": 14.391099989414215,
+ "mean": 13.710777498185635,
+ "recall": 1,
+ "filtered": {
+  "permissive": {
+   "selectivity": 0.80003,
+   "p50": 15.889299988746643,
+   "p95": 17.345399975776672,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  },
+  "moderate": {
+   "selectivity": 0.20004,
+   "p50": 14.180499970912933,
+   "p95": 15.965100049972534,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  },
+  "restrictive": {
+   "selectivity": 0.00994,
+   "p50": 13.471700012683868,
+   "p95": 16.301500022411346,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  }
+ },
+ "rssBytes": 250630144,
+ "heapBytes": 8899448,
+ "diskBytes": 16470016
+}

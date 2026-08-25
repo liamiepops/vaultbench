@@ -1,0 +1,44 @@
+{
+ "engine": "orama",
+ "size": 1000,
+ "rep": 2,
+ "k": 10,
+ "nQueries": 200,
+ "buildMs": 27.401100039482117,
+ "indexed": null,
+ "indexError": null,
+ "coldP50": 0.5231000185012817,
+ "p50": 0.468999981880188,
+ "p95": 0.6067000031471252,
+ "mean": 0.49775700002908707,
+ "recall": 1,
+ "filtered": {
+  "permissive": {
+   "selectivity": 0.80003,
+   "p50": 0.4729999899864197,
+   "p95": 0.6565000414848328,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  },
+  "moderate": {
+   "selectivity": 0.20004,
+   "p50": 0.12680000066757202,
+   "p95": 0.16929996013641357,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 10
+  },
+  "restrictive": {
+   "selectivity": 0.00994,
+   "p50": 0.016299962997436523,
+   "p95": 0.02379995584487915,
+   "recall": 1,
+   "recallMean": 1,
+   "returnedMean": 8
+  }
+ },
+ "rssBytes": 246272000,
+ "heapBytes": 7854704,
+ "diskBytes": 9618627
+}
